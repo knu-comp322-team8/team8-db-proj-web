@@ -35,18 +35,18 @@ export interface Department {
 export interface DashboardStats {
     // Row 1
     deploymentStatus: { status: string; count: number }[];
-    gpuUsage: { environment: string; avg_gpu: number; deployment_count: number }[];
-    idleModelsCount: number;
+    gpuUsage: { environment: string; total_gpu_count: number; deployment_count: number }[];
+    idleModels: { model_id: number; model_name: string; model_type: string }[];
 
     // Row 2
     roleDistribution: { role: string; count: number }[];
     projectsByDept: { department_name: string; project_count: number }[];
-    stakeholders: { user_id: string; user_name: string; role: string; department_name?: string }[];
+
 
     // Row 3
-    highCostSessions: { session_id: string; user_name?: string; token_used: number; request_time: string }[];
+    highCostSessions: { session_id: string; user_name?: string; token_used: number }[];
     powerUsers: { user_id: string; user_name: string; session_count: number }[];
-    liveIssues: { user_id: string; user_name: string; department_name?: string }[];
+    liveIssues: { user_id: string; user_name: string; department_name?: string; status: string }[];
 }
 
 export const SessionStatus = {
@@ -138,6 +138,7 @@ export interface DataState {
     departments: Department[];
     projects: Project[];
     sessions: Session[];
+    currentSession: Session | null;
     currentSessionLogs: SessionLog[];
     dashboardStats: DashboardStats | null;
 
@@ -156,6 +157,7 @@ export interface DataState {
 
     // Dashboard
     fetchDashboardStats: () => Promise<void>;
+    fetchPowerUsers: (minSessions: number) => Promise<void>;
 
     // Projects
     fetchProjects: (searchParams?: { projectName?: string; creatorName?: string; departmentName?: string }) => Promise<void>;
@@ -166,6 +168,7 @@ export interface DataState {
     // Sessions
     fetchSessions: (filters?: { userName?: string; projectName?: string; type?: SessionType; status?: SessionStatus }) => Promise<void>;
     fetchSessionsByProject: (projectId: string) => Promise<void>;
+    fetchSession: (sessionId: string) => Promise<void>;
     deleteSession: (sessionId: string) => Promise<void>;
     fetchSessionLogs: (sessionId: string) => Promise<void>;
     deleteSessionLog: (sessionId: string, logSequence: number) => Promise<void>;
@@ -204,6 +207,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     departments: [],
     projects: [],
     sessions: [],
+    currentSession: null,
     currentSessionLogs: [],
     dashboardStats: null,
 
@@ -285,7 +289,7 @@ export const useDataStore = create<DataState>((set, get) => ({
                 idleModelsRes,
                 roleDistRes,
                 projDeptRes,
-                stakeholdersRes,
+
                 highCostRes,
                 powerUsersRes,
                 liveIssuesRes
@@ -295,57 +299,64 @@ export const useDataStore = create<DataState>((set, get) => ({
                 axios.get(`${API_URL}/api/v1/models/stats/q10`),
                 axios.get(`${API_URL}/api/v1/users/stats/role-distribution`),
                 axios.get(`${API_URL}/api/v1/projects/stats/by-department`),
-                axios.get(`${API_URL}/api/v1/users/stats/role-and-managers`),
                 axios.get(`${API_URL}/api/v1/sessions/stats/logs-by-token?limit=5`),
-                axios.get(`${API_URL}/api/v1/users/stats/min-sessions?limit=5`),
-                axios.get(`${API_URL}/api/v1/users/stats/with-sessions?session_status=오류`) // Or 'STOPPED' if needed, maybe fetch both or handle in backend
+                axios.get(`${API_URL}/api/v1/users/stats/min-sessions?limit=100&min_sessions=5`),
+                axios.get(`${API_URL}/api/v1/users/stats/with-sessions?session_status=오류`)
             ]);
-
             const stoppedRes = await axios.get(`${API_URL}/api/v1/users/stats/with-sessions?session_status=중단`);
 
-            // Merge live issues (unique users)
-            const errorUsers = liveIssuesRes.data;
-            const stoppedUsers = stoppedRes.data;
+            const errorUsers = liveIssuesRes.data.map((u: any) => ({ ...u, status: '오류' }));
+            const stoppedUsers = stoppedRes.data.map((u: any) => ({ ...u, status: '중단' }));
             const allIssueUsers = [...errorUsers, ...stoppedUsers];
-            // Deduplicate by user_id
-            const uniqueIssueUsers = Array.from(new Map(allIssueUsers.map((item: any) => [item.user_id, item])).values());
+
+            const uniqueIssueUsersMap = new Map();
+            allIssueUsers.forEach(u => {
+                if (!uniqueIssueUsersMap.has(u.user_id)) {
+                    uniqueIssueUsersMap.set(u.user_id, u);
+                } else {
+                    if (u.status === '오류') {
+                        uniqueIssueUsersMap.set(u.user_id, u);
+                    }
+                }
+            });
+            const uniqueIssueUsers = Array.from(uniqueIssueUsersMap.values());
 
             set({
                 dashboardStats: {
                     deploymentStatus: deployStatusRes.data,
                     gpuUsage: gpuRes.data,
-                    idleModelsCount: idleModelsRes.data.length,
+                    idleModels: idleModelsRes.data,
                     roleDistribution: roleDistRes.data,
                     projectsByDept: projDeptRes.data,
-                    stakeholders: stakeholdersRes.data,
+
                     highCostSessions: highCostRes.data,
                     powerUsers: powerUsersRes.data,
-                    liveIssues: uniqueIssueUsers as any // Type assertion for now
+                    liveIssues: uniqueIssueUsers as any
                 }
             });
 
-            if (get().users.length === 0) {
-                await get().fetchUsers();
-            }
-            const allUsers = get().users;
 
-            const stakeholderIds = stakeholdersRes.data.map((s: any) => s.user_id);
-            const enrichedStakeholders = allUsers.filter(u => stakeholderIds.includes(u.id)).map(u => ({
-                user_id: u.id,
-                user_name: u.name,
-                role: u.role,
-                department_name: u.departmentName
-            }));
 
-            set(state => ({
-                dashboardStats: state.dashboardStats ? {
-                    ...state.dashboardStats,
-                    stakeholders: enrichedStakeholders
-                } : null
-            }));
+
 
         } catch (error) {
             console.error('Failed to fetch dashboard stats:', error);
+        }
+    },
+
+    fetchPowerUsers: async (minSessions: number) => {
+        try {
+            const res = await axios.get(`${API_URL}/api/v1/users/stats/min-sessions`, {
+                params: { limit: 100, min_sessions: minSessions }
+            });
+            set(state => ({
+                dashboardStats: state.dashboardStats ? {
+                    ...state.dashboardStats,
+                    powerUsers: res.data
+                } : null
+            }));
+        } catch (error) {
+            console.error('Failed to fetch power users:', error);
         }
     },
 
@@ -476,6 +487,16 @@ export const useDataStore = create<DataState>((set, get) => ({
             set({ sessions: response.data });
         } catch (error) {
             console.error('Failed to fetch project sessions:', error);
+        }
+    },
+
+    fetchSession: async (sessionId) => {
+        try {
+            const response = await axios.get(`${API_URL}/api/v1/sessions/${sessionId}`);
+            set({ currentSession: response.data });
+        } catch (error) {
+            console.error('Failed to fetch session:', error);
+            set({ currentSession: null });
         }
     },
 

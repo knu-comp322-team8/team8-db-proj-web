@@ -193,10 +193,8 @@ const UserOrg = () => {
 
     useEffect(() => {
         fetchDepartments();
-        // Do NOT fetch users initially as per requirement
     }, [fetchDepartments]);
 
-    // Set initial selection based on URL query param
     useEffect(() => {
         if (departments.length > 0) {
             const params = new URLSearchParams(location.search);
@@ -207,17 +205,14 @@ const UserOrg = () => {
                 const deptExists = departments.some(d => d.id === deptIdParam);
                 if (deptExists) {
                     setSelectedDeptId(deptIdParam);
-                    fetchUsers({ departmentId: deptIdParam }); // Fetch users for the linked department
+                    fetchUsers({ departmentId: deptIdParam });
                     return;
                 }
             }
-
-            // If no param, we don't select anything by default, keeping the right panel empty
         }
     }, [departments, location.search, fetchUsers]);
 
     const selectedDept = selectedDeptId && selectedDeptId !== 'all' ? departments.find(d => d.id === selectedDeptId) : null;
-    // filteredUsers is no longer needed as 'users' in store now contains only the fetched users
 
     const handleCreateDept = () => {
         setModalMode('create');
@@ -227,7 +222,7 @@ const UserOrg = () => {
 
     const handleEditDept = (dept: Department) => {
         setModalMode('edit');
-        setDeptForm({ id: dept.id, name: dept.name, managerId: '' }); // Manager ID logic needs refinement if API returns it
+        setDeptForm({ id: dept.id, name: dept.name, managerId: '' });
         setIsDeptModalOpen(true);
     };
 
@@ -243,8 +238,8 @@ const UserOrg = () => {
         if (modalMode === 'create') {
             await createDepartment({
                 ...deptForm,
-                manager: '', // Default value as it's required by interface but not in form
-                projects: [] // Default value
+                manager: '',
+                projects: []
             });
         } else {
             await updateDepartment(deptForm.id, deptForm);

@@ -573,12 +573,12 @@ const ProjectPage: React.FC = () => {
                                 value={form.departmentId}
                                 onChange={e => {
                                     const deptId = e.target.value;
-                                    setForm({ ...form, departmentId: deptId, creatorId: '' }); // Reset creator when dept changes
+                                    setForm({ ...form, departmentId: deptId, creatorId: '' });
                                     if (deptId) {
                                         fetchDepartmentUsers(deptId);
                                     }
                                 }}
-                                disabled={modalMode === 'edit'} // Usually dept doesn't change easily, but can be enabled if needed
+                                disabled={modalMode === 'edit'}
                             >
                                 <option value="">부서 선택</option>
                                 {departments.map(d => (

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useDataStore } from '../store/useDataStore';
 import { theme } from '../styles/theme';
@@ -12,6 +12,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { SessionDetailModal } from '../components/session/SessionDetailModal';
 
 const PageContainer = styled.div`
   display: flex;
@@ -123,6 +124,7 @@ const STATUS_COLORS: Record<string, string> = {
 const Dashboard = () => {
     const { dashboardStats, fetchDashboardStats } = useDataStore();
     const navigate = useNavigate();
+    const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchDashboardStats();
@@ -152,9 +154,11 @@ const Dashboard = () => {
 
     const gpuData = dashboardStats.gpuUsage.map(item => ({
         name: item.environment,
-        gpu: item.avg_gpu,
+        gpu: item.total_gpu_count,
         deployments: item.deployment_count
+
     }));
+
 
     return (
         <PageContainer>
@@ -202,7 +206,7 @@ const Dashboard = () => {
                 {/* 2. GPU Resource Usage */}
                 <WidgetCard>
                     <WidgetHeader>
-                        <WidgetTitle><MdMemory /> GPU 리소스 사용량</WidgetTitle>
+                        <WidgetTitle><MdMemory /> 배포 환경별 GPU 현황</WidgetTitle>
                     </WidgetHeader>
                     <WidgetContent>
                         <ResponsiveContainer width="100%" height="100%">
@@ -226,15 +230,28 @@ const Dashboard = () => {
                         <WidgetTitle><MdCloudOff /> 미배포 모델 (유휴 자원)</WidgetTitle>
                     </WidgetHeader>
                     <WidgetContent>
-                        <MetricValue style={{ color: dashboardStats.idleModelsCount > 0 ? '#F59E0B' : theme.colors.textSecondary }}>
-                            {dashboardStats.idleModelsCount}
-                            <span style={{ fontSize: '16px', marginLeft: '8px', color: theme.colors.textSecondary }}>개</span>
-                        </MetricValue>
-                        {dashboardStats.idleModelsCount > 0 && (
-                            <div style={{ textAlign: 'center', color: '#F59E0B', fontSize: '14px', marginTop: '-40px' }}>
-                                리소스 정리가 필요합니다.
-                            </div>
-                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                            <MetricValue style={{ color: dashboardStats.idleModels.length > 0 ? '#F59E0B' : theme.colors.textSecondary, marginBottom: '8px' }}>
+                                {dashboardStats.idleModels.length}
+                                <span style={{ fontSize: '16px', marginLeft: '8px', color: theme.colors.textSecondary }}>개</span>
+                            </MetricValue>
+                            {dashboardStats.idleModels.length > 0 && (
+                                <>
+                                    <div style={{ color: '#F59E0B', fontSize: '14px', marginBottom: '16px', fontWeight: 600 }}>
+                                        리소스 정리가 필요합니다.
+                                    </div>
+                                    <ListContainer style={{ width: '100%', maxHeight: '120px' }}>
+                                        {dashboardStats.idleModels.map((model) => (
+                                            <ListItem key={model.model_id} style={{ padding: '8px 12px', minHeight: 'auto' }}>
+                                                <ItemTitle style={{ fontSize: '13px' }}>
+                                                    모델명: {model.model_name} <span style={{ color: theme.colors.textSecondary, fontSize: '11px', fontWeight: 400 }}>({model.model_type})</span>
+                                                </ItemTitle>
+                                            </ListItem>
+                                        ))}
+                                    </ListContainer>
+                                </>
+                            )}
+                        </div>
                     </WidgetContent>
                 </WidgetCard>
             </Grid>
@@ -287,36 +304,6 @@ const Dashboard = () => {
                     </WidgetContent>
                 </WidgetCard>
 
-                {/* 6. Key Stakeholders */}
-                <WidgetCard>
-                    <WidgetHeader>
-                        <WidgetTitle><MdPerson /> 주요 이해관계자</WidgetTitle>
-                    </WidgetHeader>
-                    <WidgetContent>
-                        <ListContainer>
-                            {dashboardStats.stakeholders.map((user) => (
-                                <ListItem key={user.user_id}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div style={{
-                                            width: '32px', height: '32px', borderRadius: '50%',
-                                            backgroundColor: '#EEF2FF', color: theme.colors.primary,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
-                                            <MdPerson />
-                                        </div>
-                                        <ItemInfo>
-                                            <ItemTitle>{user.user_name}</ItemTitle>
-                                            <ItemSub>{user.role}</ItemSub>
-                                        </ItemInfo>
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: theme.colors.textSecondary }}>
-                                        {user.department_name || 'N/A'}
-                                    </div>
-                                </ListItem>
-                            ))}
-                        </ListContainer>
-                    </WidgetContent>
-                </WidgetCard>
             </Grid>
 
             {/* Row 3: Monitoring & Cost Efficiency */}
@@ -325,15 +312,21 @@ const Dashboard = () => {
                 {/* 7. High Cost Sessions */}
                 <WidgetCard>
                     <WidgetHeader>
-                        <WidgetTitle><MdTrendingUp /> 고비용 세션 (Top 5)</WidgetTitle>
+                        <WidgetTitle><MdTrendingUp /> 토큰 사용량 Top 5 로그</WidgetTitle>
                     </WidgetHeader>
                     <WidgetContent>
                         <ListContainer>
                             {dashboardStats.highCostSessions.map((session) => (
-                                <ListItem key={session.session_id}>
+                                <ListItem
+                                    key={session.session_id}
+                                    style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                                    onClick={() => setSelectedSessionId(session.session_id)}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = theme.colors.background}
+                                >
                                     <ItemInfo>
                                         <ItemTitle>{session.user_name || 'Unknown User'}</ItemTitle>
-                                        <ItemSub>{new Date(session.request_time).toLocaleString()}</ItemSub>
+                                        <ItemSub>Session ID: {session.session_id.substring(0, 8)}...</ItemSub>
                                     </ItemInfo>
                                     <div style={{ fontWeight: 700, color: '#EF4444' }}>
                                         {session.token_used.toLocaleString()} Tokens
@@ -347,12 +340,16 @@ const Dashboard = () => {
                 {/* 8. Power Users */}
                 <WidgetCard>
                     <WidgetHeader>
-                        <WidgetTitle><MdList /> 파워 유저 랭킹</WidgetTitle>
+                        <WidgetTitle><MdList /> 최다 세션 사용자 랭킹</WidgetTitle>
                     </WidgetHeader>
                     <WidgetContent>
                         <ListContainer>
                             {dashboardStats.powerUsers.map((user, index) => (
-                                <ListItem key={user.user_id}>
+                                <ListItem
+                                    key={user.user_id}
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => navigate(`/monitoring?userName=${user.user_name}`)}
+                                >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <div style={{
                                             width: '24px', height: '24px', borderRadius: '50%',
@@ -377,29 +374,43 @@ const Dashboard = () => {
                 {/* 9. Live Issues Alert */}
                 <WidgetCard>
                     <WidgetHeader>
-                        <WidgetTitle><MdWarning /> 실시간 이슈 알림</WidgetTitle>
+                        <WidgetTitle><MdWarning /> 실시간 세션 이슈</WidgetTitle>
                     </WidgetHeader>
                     <WidgetContent>
                         {dashboardStats.liveIssues.length > 0 ? (
                             <ListContainer>
-                                {dashboardStats.liveIssues.map((user) => (
-                                    <ListItem
-                                        key={user.user_id}
-                                        style={{ cursor: 'pointer', border: '1px solid #FECACA', backgroundColor: '#FEF2F2' }}
-                                        onClick={() => navigate(`/monitoring?userName=${user.user_name}`)}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <MdError color="#EF4444" />
-                                            <ItemInfo>
-                                                <ItemTitle>{user.user_name}</ItemTitle>
-                                                <ItemSub>{user.department_name || 'Unknown Dept'}</ItemSub>
-                                            </ItemInfo>
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 600 }}>
-                                            Check Logs &rarr;
-                                        </div>
-                                    </ListItem>
-                                ))}
+                                {dashboardStats.liveIssues.map((user) => {
+                                    const isError = user.status === '오류';
+                                    const borderColor = isError ? '#EF4444' : '#F59E0B';
+                                    const bgColor = isError ? '#FEF2F2' : '#FFFBEB';
+                                    const textColor = isError ? '#EF4444' : '#D97706';
+
+                                    return (
+                                        <ListItem
+                                            key={user.user_id}
+                                            style={{
+                                                cursor: 'pointer',
+                                                borderLeft: `4px solid ${borderColor}`,
+                                                backgroundColor: bgColor,
+                                                padding: '12px 16px'
+                                            }}
+                                            onClick={() => navigate(`/monitoring?userName=${user.user_name}`)}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                    <MdError color={borderColor} size={20} />
+                                                </div>
+                                                <ItemInfo>
+                                                    <ItemTitle style={{ fontSize: '15px' }}>{user.user_name}</ItemTitle>
+                                                    <ItemSub style={{ color: textColor, fontWeight: 500 }}>{user.status}</ItemSub>
+                                                </ItemInfo>
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: theme.colors.textSecondary, fontWeight: 500 }}>
+                                                View Logs &rarr;
+                                            </div>
+                                        </ListItem>
+                                    );
+                                })}
                             </ListContainer>
                         ) : (
                             <div style={{
@@ -413,6 +424,10 @@ const Dashboard = () => {
                     </WidgetContent>
                 </WidgetCard>
             </Grid>
+
+            {selectedSessionId && (
+                <SessionDetailModal sessionId={selectedSessionId} onClose={() => setSelectedSessionId(null)} />
+            )}
         </PageContainer>
     );
 };
