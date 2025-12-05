@@ -153,6 +153,7 @@ export interface DataState {
     fetchDepartments: () => Promise<void>;
     createDepartment: (dept: Omit<Department, 'id'>) => Promise<void>;
     updateDepartment: (id: string, dept: Partial<Department> & { managerId?: string }) => Promise<void>;
+    updateDepartmentManager: (departmentId: string, managerUserId: string) => Promise<void>;
     deleteDepartment: (id: string) => Promise<void>;
 
     // Dashboard
@@ -459,6 +460,23 @@ export const useDataStore = create<DataState>((set, get) => ({
             manager_user_id: dept.managerId
         });
         get().fetchDepartments();
+    },
+
+    updateDepartmentManager: async (departmentId, managerUserId) => {
+        try {
+            await axios.put(`${API_URL}/api/v1/departments/${departmentId}/manager`, null, {
+                params: { manager_user_id: managerUserId }
+            });
+            get().fetchDepartments();
+        } catch (error: any) {
+            if (error.response && error.response.status === 400) {
+                alert(error.response.data.detail);
+            } else {
+                console.error('Failed to update department manager:', error);
+                alert('관리자 지정 중 오류가 발생했습니다.');
+            }
+            throw error;
+        }
     },
 
     deleteDepartment: async (id) => {

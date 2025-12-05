@@ -187,7 +187,7 @@ const Dashboard = () => {
                                     dataKey="value"
                                     onClick={(data) => {
                                         if (data.name === 'Error') {
-                                            navigate('/deployments?status=Error'); // Assuming query param support
+                                            navigate('/deployments?status=Error');
                                         }
                                     }}
                                     cursor="pointer"

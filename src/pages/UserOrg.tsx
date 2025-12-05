@@ -9,6 +9,7 @@ import {
     MdFolder, MdFolderOpen, MdPerson,
     MdAdd, MdEdit, MdDelete, MdSearch
 } from 'react-icons/md';
+import { ManagerSelectModal } from '../components/user/ManagerSelectModal';
 
 const PageContainer = styled.div`
   display: flex;
@@ -171,6 +172,7 @@ const UserOrg = () => {
     // State for Modals
     const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+    const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     // Removed unused editingUser/editingDept state as we use form state directly
 
@@ -186,7 +188,8 @@ const UserOrg = () => {
         departments, users,
         fetchDepartments, fetchUsers,
         createUser, updateUser, deleteUser,
-        createDepartment, updateDepartment, deleteDepartment
+        createDepartment, updateDepartment, deleteDepartment,
+        updateDepartmentManager
     } = useDataStore();
     const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
     const location = useLocation();
@@ -369,7 +372,22 @@ const UserOrg = () => {
                                 {selectedDeptId !== 'all' && selectedDept && (
                                     <DeptManager>
                                         <MdPerson size={16} />
-                                        관리자: <span style={{ fontWeight: 600, color: theme.colors.textPrimary }}>{selectedDept.manager}</span>
+                                        관리자:
+                                        {selectedDept.manager && selectedDept.manager !== 'Unassigned' ? (
+                                            <span style={{ fontWeight: 600, color: theme.colors.textPrimary }}>{selectedDept.manager}</span>
+                                        ) : (
+                                            <PrimaryButton
+                                                onClick={() => setIsManagerModalOpen(true)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    fontSize: '12px',
+                                                    height: 'auto',
+                                                    marginLeft: '8px'
+                                                }}
+                                            >
+                                                <MdPerson size={14} /> 관리자 지정
+                                            </PrimaryButton>
+                                        )}
                                     </DeptManager>
                                 )}
                             </DeptInfo>
@@ -618,6 +636,21 @@ const UserOrg = () => {
                             </form>
                         </ModalContent>
                     </ModalOverlay>
+                )
+            }
+
+            {/* Manager Assignment Modal */}
+            {
+                isManagerModalOpen && (
+                    <ManagerSelectModal
+                        onClose={() => setIsManagerModalOpen(false)}
+                        onSelect={async (userId) => {
+                            if (selectedDeptId) {
+                                await updateDepartmentManager(selectedDeptId, userId);
+                                setIsManagerModalOpen(false);
+                            }
+                        }}
+                    />
                 )
             }
         </PageContainer >
