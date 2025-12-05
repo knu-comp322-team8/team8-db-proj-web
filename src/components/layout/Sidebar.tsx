@@ -1,12 +1,13 @@
 import styled from 'styled-components';
 import { NavLink } from 'react-router-dom';
 import {
-    MdDashboard,
-    MdPeople,
-    MdMemory,
-    MdCloudUpload,
-    MdDescription,
-    MdMonitor
+  MdDashboard,
+  MdPeople,
+  MdFolder,
+  MdMemory,
+  MdDescription,
+  MdMonitor,
+  MdStorage
 } from 'react-icons/md';
 import { theme } from '../../styles/theme';
 
@@ -51,6 +52,7 @@ const NavItem = styled(NavLink)`
   color: ${theme.colors.textSecondary};
   font-weight: 500;
   transition: all 0.2s ease;
+  text-decoration: none;
 
   &:hover {
     background-color: ${theme.colors.background};
@@ -64,31 +66,36 @@ const NavItem = styled(NavLink)`
 `;
 
 const Sidebar = () => {
-    return (
-        <SidebarContainer>
-            <LogoArea>LLM Dashboard</LogoArea>
-            <NavList>
-                <NavItem to="/">
-                    <MdDashboard size={20} /> Dashboard
-                </NavItem>
-                <NavItem to="/users">
-                    <MdPeople size={20} /> User & Org
-                </NavItem>
-                <NavItem to="/models">
-                    <MdMemory size={20} /> Models
-                </NavItem>
-                <NavItem to="/deployments">
-                    <MdCloudUpload size={20} /> Deployments
-                </NavItem>
-                <NavItem to="/templates">
-                    <MdDescription size={20} /> Templates
-                </NavItem>
-                <NavItem to="/monitoring">
-                    <MdMonitor size={20} /> Monitoring
-                </NavItem>
-            </NavList>
-        </SidebarContainer>
-    );
+  return (
+    <SidebarContainer>
+      <LogoArea>LLM Dashboard</LogoArea>
+      <NavList>
+        <NavItem to="/">
+          <MdDashboard size={20} /> Dashboard
+        </NavItem>
+        <NavItem to="/users">
+          <MdPeople size={20} /> User & Org
+        </NavItem>
+        <NavItem to="/projects">
+          <MdFolder size={20} /> Projects
+        </NavItem>
+        <NavItem to="/monitoring">
+          <MdMonitor size={20} /> Sessions
+        </NavItem>
+        <NavItem to="/model-deploy">
+          <MdMemory size={20} />
+          Model & Deploy
+        </NavItem>
+        <NavItem to="/datasets">
+          <MdStorage size={20} />
+          Datasets
+        </NavItem>
+        <NavItem to="/templates">
+          <MdDescription size={20} /> Templates
+        </NavItem>
+      </NavList>
+    </SidebarContainer>
+  );
 };
 
 export default Sidebar;
