@@ -7,7 +7,7 @@ import { theme } from '../styles/theme';
 import { Card } from '../components/common/Card';
 import {
     MdFolder, MdFolderOpen, MdPerson,
-    MdAdd, MdEdit, MdDelete, MdSearch
+    MdAdd, MdEdit, MdSearch
 } from 'react-icons/md';
 import { ManagerSelectModal } from '../components/user/ManagerSelectModal';
 
@@ -187,8 +187,8 @@ const UserOrg = () => {
     const {
         departments, users,
         fetchDepartments, fetchUsers,
-        createUser, updateUser, deleteUser,
-        createDepartment, updateDepartment, deleteDepartment,
+        createUser, updateUser,
+        createDepartment, updateDepartment,
         updateDepartmentManager
     } = useDataStore();
     const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
@@ -229,12 +229,6 @@ const UserOrg = () => {
         setIsDeptModalOpen(true);
     };
 
-    const handleDeleteDept = async (id: string) => {
-        if (window.confirm('정말 이 부서를 삭제하시겠습니까?')) {
-            await deleteDepartment(id);
-            if (selectedDeptId === id) setSelectedDeptId(null);
-        }
-    };
 
     const handleSubmitDept = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -272,14 +266,6 @@ const UserOrg = () => {
         setIsUserModalOpen(true);
     };
 
-    const handleDeleteUser = async (id: string) => {
-        if (window.confirm('정말 이 사용자를 삭제하시겠습니까?')) {
-            const refreshParams = (selectedDeptId && selectedDeptId !== 'all')
-                ? { departmentId: selectedDeptId }
-                : undefined;
-            await deleteUser(id, refreshParams);
-        }
-    };
 
     const handleSubmitUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -336,7 +322,6 @@ const UserOrg = () => {
                             {selectedDeptId === dept.id && (
                                 <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: '4px' }}>
                                     <IconButton title="Edit Department" onClick={() => handleEditDept(dept)}><MdEdit size={14} /></IconButton>
-                                    <IconButton title="Delete Department" onClick={() => handleDeleteDept(dept.id)}><MdDelete size={14} /></IconButton>
                                 </div>
                             )}
                         </TreeItem>
@@ -502,7 +487,6 @@ const UserOrg = () => {
                                                 <Td>
                                                     <ActionGroup>
                                                         <IconButton title="사용자 수정" onClick={() => handleEditUser(user)}><MdEdit size={18} /></IconButton>
-                                                        <IconButton title="사용자 삭제" onClick={() => handleDeleteUser(user.id)}><MdDelete size={18} /></IconButton>
                                                     </ActionGroup>
                                                 </Td>
                                             </tr>

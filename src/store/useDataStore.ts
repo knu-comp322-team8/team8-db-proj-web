@@ -442,9 +442,10 @@ export const useDataStore = create<DataState>((set, get) => ({
         get().fetchUsers(refreshParams);
     },
 
-    deleteUser: async (id, refreshParams) => {
-        await axios.delete(`${API_URL}/api/v1/users/${id}`);
-        get().fetchUsers(refreshParams);
+    deleteUser: async (_id, _refreshParams) => {
+        console.warn('User deletion is disabled.');
+        // await axios.delete(`${API_URL}/api/v1/users/${id}`);
+        // get().fetchUsers(refreshParams);
     },
 
     createDepartment: async (dept) => {
@@ -479,9 +480,10 @@ export const useDataStore = create<DataState>((set, get) => ({
         }
     },
 
-    deleteDepartment: async (id) => {
-        await axios.delete(`${API_URL}/api/v1/departments/${id}`);
-        get().fetchDepartments();
+    deleteDepartment: async (_id) => {
+        console.warn('Department deletion is disabled.');
+        // await axios.delete(`${API_URL}/api/v1/departments/${id}`);
+        // get().fetchDepartments();
     },
 
     fetchSessions: async (filters) => {
